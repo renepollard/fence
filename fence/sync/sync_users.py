@@ -1774,58 +1774,51 @@ class UserSyncer(object):
                             path, permission, prefix=policy_prefix
                         )
 
-                        if policy_id not in self._created_policies:
-                            try:
-                                self.arborist_client.update_policy(
-                                    policy_id,
-                                    {
-                                        "description": "policy created by fence sync",
-                                        "role_ids": [permission],
-                                        "resource_paths": [path],
-                                    },
-                                    create_if_not_exist=True,
-                                )
-                            except ArboristError as e:
-                                self.logger.info(
-                                    "not creating policy in arborist; {}".format(str(e))
-                                )
-                            self._created_policies.add(policy_id)
+                        # if policy_id not in self._created_policies:
+                        #     try:
+                        #         self.arborist_client.update_policy(
+                        #             policy_id,
+                        #             {
+                        #                 "description": "policy created by fence sync",
+                        #                 "role_ids": [permission],
+                        #                 "resource_paths": [path],
+                        #             },
+                        #             create_if_not_exist=True,
+                        #         )
+                        #     except ArboristError as e:
+                        #         self.logger.info(
+                        #             "not creating policy in arborist; {}".format(str(e))
+                        #         )
+                        #     self._created_policies.add(policy_id)
 
-                        self.arborist_client.grant_user_policy(
-                            username,
-                            policy_id,
-                            expires_at=expires,
+                        # self.arborist_client.grant_user_policy(
+                        #     username,
+                        #     policy_id,
+                        #     expires_at=expires,
+                        # )
+
+                        if single_user_sync:
+                            policy_id_list.append(policy_id)
+                            policy_json = {
+                                "id": policy_id,
+                                "description": "policy created by fence sync",
+                                "role_ids": [permission],
+                                "resource_paths": [path],
+                            }
+                            policies.append(policy_json)
+            if single_user_sync:
+                try:
+                    self.arborist_client.update_bulk_policy(policies)
+                    self.arborist_client.grant_bulk_user_policy(
+                        username, policy_id_list
+                    )
+                except Exception as e:
+                    self.logger.info(
+                        "Couldn't update bulk policy for user {}: {}".format(
+                            username, e
                         )
+                    )
 
-            # TODO As of 10-11-2021, there's no endpoint yet in Arborist to
-            # support the creation of policies in bulk. When syncing RAS
-            # passport authz information at the time of data access, the
-            # passport policies may need to be created before they can be
-            # updated. This code has been left commented out for later use
-            # when bulk Arborist policy creation is suppported.
-
-            #             if single_user_sync:
-            #                 policy_id_list.append(policy_id)
-            #                 policy_json = {
-            #                     "id": policy_id,
-            #                     "description": "policy created by fence sync",
-            #                     "role_ids": [permission],
-            #                     "resource_paths": [path],
-            #                 }
-            #                 policies.append(policy_json)
-            # if single_user_sync:
-            #     try:
-            #         self.arborist_client.update_bulk_policy(policies)
-            #         self.arborist_client.grant_bulk_user_policy(
-            #             username, policy_id_list
-            #         )
-            #     except Exception as e:
-            #         self.logger.info(
-            #             "Couldn't update bulk policy for user {}: {}".format(
-            #                 username, e
-            #             )
-            #         )
-            #
             if user_yaml:
                 for policy in user_yaml.policies.get(username, []):
                     self.arborist_client.grant_user_policy(
@@ -1871,9 +1864,9 @@ class UserSyncer(object):
         Returns:
             str: arborist resource path for study
         """
-        healthy = self._is_arborist_healthy()
-        if not healthy:
-            return False
+        # healthy = self._is_arborist_healthy()
+        # if not healthy:
+        #     return False
 
         default_namespaces = dbgap_config.get("study_to_resource_namespaces", {}).get(
             "_default", ["/"]
@@ -1893,25 +1886,26 @@ class UserSyncer(object):
                 # The update_resource function creates a put request which will overwrite
                 # existing resources. Therefore, only create if get_resource returns
                 # the resource doesn't exist.
+
                 full_resource_path = resource_namespace + dbgap_study
-                if not self.arborist_client.get_resource(full_resource_path):
-                    response = self.arborist_client.update_resource(
-                        resource_namespace,
-                        {"name": dbgap_study, "description": "synced from dbGaP"},
-                        create_parents=True,
-                    )
-                    self.logger.info(
-                        "added arborist resource under parent path: {} for dbgap project {}.".format(
-                            resource_namespace, dbgap_study
-                        )
-                    )
-                    self.logger.debug("Arborist response: {}".format(response))
-                else:
-                    self.logger.debug(
-                        "Arborist resource already exists: {}".format(
-                            full_resource_path
-                        )
-                    )
+                # if not self.arborist_client.get_resource(full_resource_path):
+                #     response = self.arborist_client.update_resource(
+                #         resource_namespace,
+                #         {"name": dbgap_study, "description": "synced from dbGaP"},
+                #         create_parents=True,
+                #     )
+                #     self.logger.info(
+                #         "added arborist resource under parent path: {} for dbgap project {}.".format(
+                #             resource_namespace, dbgap_study
+                #         )
+                #     )
+                #     self.logger.debug("Arborist response: {}".format(response))
+                # else:
+                #     self.logger.debug(
+                #         "Arborist resource already exists: {}".format(
+                #             full_resource_path
+                #         )
+                #     )
 
                 if dbgap_study not in self._dbgap_study_to_resources:
                     self._dbgap_study_to_resources[dbgap_study] = []
