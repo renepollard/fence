@@ -25,7 +25,7 @@ jobs:
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: ${{ secrets.REGISTRY}}/ftest
+          image: ftest
           tags: v1
           containerfiles: |
            ./Dockerfile
@@ -44,7 +44,7 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Push To quay.io
+      - name: Push To reopistory
         id: push-to-quay
         uses: redhat-actions/push-to-registry@v2
         with:
