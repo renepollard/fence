@@ -48,7 +48,7 @@ jobs:
         id: push-to-quay
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ steps.build-image.outputs.image }}
+          image: ${{ secrets.REGISTRY}}/${{ steps.build-image.outputs.image }}
           tags: ${{ steps.build-image.outputs.tags }}
           registry: ${{ secrets.REGISTRY}}
           username: ${{ secrets.REGISTRY_USER}}
